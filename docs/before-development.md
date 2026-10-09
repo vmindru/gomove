@@ -23,7 +23,7 @@ Use this checklist during project review. Unchecked items are outstanding; they 
 - [ ] Define closures, recurring training blocks, and date-specific exceptions.
 - [ ] Define request response expectations and any expiry behavior.
 - [ ] Define requester and manager cancellation rules.
-- [ ] Confirm simple rates, price enquiries, and any essential price variations.
+- [ ] Define hourly rounding, quote validity, and any essential rate variations. Accepted: organizations define slot durations in 15-minute increments. Accepted: organizations choose hourly or per-slot CZK rates, with “price by agreement” for custom models.
 - [ ] Decide whether individuals, groups, and organizations use the same request flow.
 - [ ] Choose the authentication implementation, account recovery and revocation rules, and email verification policy; registration is required for booking requests.
 

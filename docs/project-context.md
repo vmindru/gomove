@@ -4,7 +4,7 @@
 
 Create an independent web product for sports organizations to list sports facilities and fields available for rent. Members of the public should be able to choose a facility and request a booking. Šlapanice is the first customer deployment, not a permanent geographic restriction on GoMove.
 
-The current request is to document the project for review before starting implementation.
+The project description supplies the scope for the [step-by-step implementation plan](implementation-plan.md). A [local presentation MVP](mvp-demo.md) now implements the core catalogue and booking flow; the plan tracks remaining pilot work.
 
 The project owner has selected company-associated operation. The specific company, ownership, and support responsibilities remain to be confirmed before launch; they do not block core product development.
 
@@ -31,7 +31,7 @@ Administrator access to personal information should be limited to agreed support
 
 An organization can operate several facilities. A facility can contain several independently rentable resources. For example, a sports complex could contain two tennis courts and one hall.
 
-Availability and bookings belong to the rentable resource. For the pilot, prefer independently bookable resources. Shared spaces, divided halls, or a whole-facility booking that conflicts with individual courts require an explicit conflict model before they are supported.
+Shared capacity is required from the first release. The owner defines the number of bookable parts of a facility and gives each a unique name within that facility, such as "1/2 half 1 (A)" and "1/2 half 2 (B)", or named quarters. Model parts explicitly with stable identifiers. Independent parts can be booked simultaneously; pending and confirmed reservations block only the reserved part. Multi-part or whole-facility bookings and overlapping half/quarter configurations require a follow-up decision.
 
 ## Proposed core workflow
 
@@ -59,7 +59,7 @@ Visitors see pending and confirmed reservations only as booked/unavailable time 
 - Facility name, address, description, photos, and location.
 - Resource type, supported sports, capacity, surface, indoor/outdoor status, and amenities.
 - Accessibility information, rental conditions, and arrival instructions.
-- Prices or a clear indication that a price enquiry is required.
+- Organization-selected hourly or per-slot CZK rates; custom models display “Cena dohodou” (price by agreement).
 - Regular availability, scheduled closures, and booking rules.
 - Requester account, name, email, requested time, and optional message; collect additional details only when needed. The email verification policy remains open.
 

@@ -1,5 +1,7 @@
 # Next steps and proposed milestones
 
+The actionable development sequence is now in the [implementation plan](implementation-plan.md), with ordered tasks and acceptance checks in separate phase files. This document retains the broader discovery and pilot milestones.
+
 ## 1. Review the proposal
 
 Review the README and decision table. Mark recommendations as accepted, changed, or deferred. Prioritize availability maintenance, booking rules, authentication, and budget. Real participant names are deferred to launch preparation and do not block development.

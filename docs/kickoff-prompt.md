@@ -2,6 +2,8 @@
 
 Use this prompt after reviewing the planning documents. It requests specification work first; it does not authorize public deployment or paid service provisioning.
 
+The [implementation plan](implementation-plan.md) now supplies the roadmap and detailed phases. Use its current Laravel baseline instead of older Next.js proposals.
+
 ```text
 Start the planning phase for GoMove, an independent sports facility rental web
 product. Šlapanice, Czech Republic, is the first customer deployment.
@@ -28,7 +30,7 @@ and update them consistently. Do not implement the application, provision paid
 services, or publish it during this planning stage.
 
 Proposed stack:
-- TypeScript with strict checking; Next.js and React.
+- Laravel/PHP backend; React and Inertia with strictly checked TypeScript frontend.
 - Accepted database decision: self-hosted PostgreSQL. Authentication and photo
   storage need separate decisions; do not assume Supabase services.
 - Database migrations and documented local development setup.
@@ -99,7 +101,12 @@ Proposed pilot booking rules:
 - Duration, increments, notice periods, booking horizon, cancellations,
   and request expiry must follow reviewed business decisions.
 - Define how schedule changes affect existing confirmed bookings.
-- Shared or divisible spaces need an explicit conflict model before support.
+- Accepted: support shared capacity through owner-defined facility parts from the
+  first release. Owners set the number of parts; each part has a unique name within
+  its facility (for example Half A, Half B, or named quarters) and a stable ID.
+  Apply availability and first-recorded-wins per part; different independent parts
+  may be booked simultaneously. Multi-part, whole-facility, and overlapping
+  half/quarter configurations remain undecided.
 
 Quality:
 Enforce authorization on the server and in database policies. Validate inputs,

@@ -8,8 +8,8 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 | --- | --- | --- |
 | Product name | GoMove as a working name; may be renamed later | Accepted 2026-10-05 |
 | Public language | Czech at launch; multilingual support from the start for adding languages later | Accepted 2026-10-05 |
-| Technical language | TypeScript; English code and technical documentation | Accepted 2026-10-05 |
-| Framework | Next.js with React | Accepted 2026-10-05 |
+| Technical language | PHP backend; TypeScript frontend; English code and technical documentation | Updated 2026-10-06 |
+| Framework | Laravel with React and Inertia; free official starter kit | Updated 2026-10-06; replaces Next.js |
 | Database | Self-hosted PostgreSQL | Accepted 2026-10-05 |
 | Authentication and photo storage | Select separately for the self-hosted setup | Open |
 | Delivery | Responsive, accessible web application for phones, tablets, and computers | Accepted 2026-10-05 |
@@ -22,6 +22,7 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 | Booking conflict protection | First recorded reservation wins; reject later overlapping requests with an error | Accepted 2026-10-05 |
 | Booking boundaries | Exact start and end times; no grace period or buffer before or after; back-to-back bookings allowed | Accepted 2026-10-05 |
 | Payments | Direct payment to the organization initially; payment facilitation may be added later | Accepted 2026-10-05 |
+| Rental rates | Organizations choose hourly or per-slot CZK rates; custom pricing displays “price by agreement” | Accepted 2026-10-09 |
 | Listing publication | Administrator approval before first publication; organizations publish later edits without further approval | Accepted 2026-10-05 |
 | Public calendars | Show booked/unavailable slots without requester identity, contact details, or private notes | Accepted 2026-10-05 |
 | Localization | CZK prices, Czech date formatting, and Europe/Prague time with daylight-saving handling | Accepted 2026-10-05 |
@@ -35,7 +36,7 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 | Which organizations and resources join the pilot? | Leave the list empty for now; confirm for onboarding before launch, not as a development prerequisite |
 | Who maintains availability, and how often? | Accepted: organization managers maintain training, closures, and external bookings; update cadence remains unspecified |
 | Calendar implementation | Accepted: build calendar management in GoMove initially; external imports and integrations deferred |
-| Are resources exclusively rentable, shared, or divisible? | Determines capacity and conflict rules |
+| Shared capacity and facility parts | Accepted 2026-10-06: owner defines the number of bookable parts, each uniquely named within its facility; combination rules remain open |
 | What are duration, start-time increments, advance notice, and booking horizon rules? | Determines valid slots; zero buffers and exact start/end boundaries are already accepted |
 | How long may requests remain unanswered? | Determines notifications, escalation, and any expiry behavior |
 | What cancellation and manager-cancellation rules apply? | Determines status transitions and messages |
@@ -54,11 +55,57 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 - External calendar imports, integrations, and synchronization.
 - Public reviews and ratings.
 - Native mobile applications.
-- Complex shared-resource and whole-facility booking combinations unless required by the pilot.
+- Whole-facility and mixed half/quarter combination rules remain undecided; owner-defined named parts are required in the first release.
 
 ## Decision record
 
+### 2026-10-09 — Organization-defined slot durations
+
+- Decision owner: project owner (user).
+- Decision: Organizations define slot durations in positive 15-minute increments: 15, 30, 45, 60, 75, 90 minutes, and so on.
+- Implementation consequences: Validate the configured duration on the server, display it with per-slot CZK pricing, and use it as the duration of a per-slot request. The local daytime MVP requires the slot to fit its opening window. Start-time alignment is also 15 minutes in the demo; final policy for other pricing models remains reviewable.
+
+
+### 2026-10-09 — Organization-defined CZK rates
+
+- Decision owner: project owner (user).
+- Decision: Rental rates are defined by the organization and expressed in CZK. Organizations choose hourly or per-slot pricing. Custom models use a “price by agreement” placeholder.
+- Rationale: The project owner confirmed organization control of pricing during the implementation-plan review.
+- Implementation consequences: Authorized organization managers maintain rental rates and choose the pricing model for their own rentable resources. Display numeric hourly or per-slot rates in CZK; show “Cena dohodou” for custom arrangements without calculating a numeric total. Preserve the applicable model and pricing information with booking requests. Do not impose a platform-wide rate.
+- Open questions: Hourly rounding, rate variations, and quote validity. Slot duration is organization-defined in 15-minute increments, as recorded below. Custom pricing formulas are outside the current implementation; use the agreement placeholder.
+
+### 2026-10-06 — Local Podman webserver and database
+
+- Decision owner: project owner (user).
+- Decision: Create an Apache/PHP and PostgreSQL Podman Compose setup with `/home/vmindru/proj/gomove` mounted into the web container.
+- Implementation: Laravel serves through Apache/PHP; React/TypeScript assets are compiled with Node.js. PostgreSQL data lives in a named volume. Apache serves only the Laravel public directory. Local settings and generated secrets live in ignored `.env.compose`.
+- Scope: Local POC configuration; production deployment has not been performed. See local-containers.md.
+
+### 2026-10-06 — Simple web server preference
+
+Historical proposal: the Next.js proxy arrangement below is superseded by the Apache/PHP Laravel setup in [server architecture](server-architecture.md). Node.js currently builds frontend assets and does not serve application requests.
+
+- Decision owner: project owner (user).
+- Preference: Use a simple web server such as Apache.
+- Proposed architecture: Apache terminates HTTPS and proxies to a local Next.js/Node.js process, with self-hosted PostgreSQL. Start on one Linux server and supervise the application with systemd.
+- Clarification: Apache can be the public web server, but the existing application still requires Node.js. Exact hosting environment and deployment configuration remain unconfirmed. See server-architecture.md.
+
+### 2026-10-06 — Free frontend templates only
+
+- Decision owner: project owner (user).
+- Decision: Use free frontend templates and UI components for now. Paid templates are outside the current scope.
+- Design preference: The project owner wants a professionally designed, human-built appearance.
+- Implementation consequences: Evaluate the free official Laravel React starter kit and its shadcn/ui components as the proposed foundation if the Laravel migration proceeds. Adapt the public directory and booking screens to a consistent design using properly licensed free resources. A specific template and the Laravel migration have not yet been explicitly finalized.
+
 For each accepted or changed decision, record: date, decision, owner, rationale, and implementation consequences.
+
+### 2026-10-06 — Shared capacity through named facility parts
+
+- Decision owner: project owner (user).
+- Decision: Support shared capacity from the start. The facility owner defines how many parts can be booked, and every part must have a unique name within that facility. Examples: "1/2 half 1 (A)", "1/2 half 2 (B)", or individually named quarters.
+- Rationale: A facility can host bookings simultaneously in different parts.
+- Implementation consequences: Model parts explicitly with stable identifiers and unique names per facility, rather than only an anonymous capacity count. Each part has its own availability; pending or confirmed reservations block that part while other independent parts remain available. Preserve first-recorded-wins and exact time boundaries per part.
+- Open question: Whether users can book multiple parts or the whole facility together, and whether halves and quarters may coexist as overlapping booking options. Do not assume geometry or containment from names alone.
 
 ### 2026-10-05 — Built-in calendar first
 
@@ -199,6 +246,8 @@ For each accepted or changed decision, record: date, decision, owner, rationale,
 - Implementation consequences: Configure strict TypeScript checking and use English identifiers, comments, and technical documentation. User-facing text follows the separate Czech and multilingual-support decision.
 
 ### 2026-10-05 — Application framework
+
+Superseded by the Laravel/React/Inertia baseline recorded in the current decision table and [server architecture](server-architecture.md). Retained below as decision history.
 
 - Decision owner: project owner (user).
 - Decision: Use Next.js with React for the public website and management screens.
