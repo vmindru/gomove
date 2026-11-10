@@ -53,7 +53,7 @@ class GoMoveController extends Controller
             $query->where('f.sport', $sport);
         }
         $facilities = $restricted ? collect() : $query->get()->map(function ($f) {
-            $resources = DB::table('gm_resources')->where('facility_id', $f->id)->get();
+            $resources = DB::table('gm_resources')->where('facility_id', $f->id)->when(! $f->whole_field_enabled, fn ($q) => $q->where('is_whole', false))->orderBy('id')->get();
 
             return [...(array) $f, 'resources' => $resources];
         });
@@ -67,10 +67,10 @@ class GoMoveController extends Controller
         $facility = $this->facilities()->where('f.id', $id)->where('f.status', 'published')->firstOrFail();
         $validated = $request->validate(['date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today', 'before_or_equal:'.now('Europe/Prague')->addDays(90)->format('Y-m-d')]]);
         $date = $validated['date'] ?? now('Europe/Prague')->addDay()->format('Y-m-d');
-        $resources = DB::table('gm_resources')->where('facility_id', $id)->orderBy('id')->get();
+        $resources = DB::table('gm_resources')->where('facility_id', $id)->when(! $facility->whole_field_enabled, fn ($q) => $q->where('is_whole', false))->orderBy('id')->get();
         $start = CarbonImmutable::parse($date, 'Europe/Prague')->startOfDay()->utc();
         $end = $start->setTimezone('Europe/Prague')->addDay()->utc();
-        $occupied = DB::table('gm_bookings')->whereIn('resource_id', $resources->pluck('id'))->whereIn('status', ['pending', 'confirmed', 'blocked'])
+        $occupied = DB::table('gm_booking_parts')->whereIn('resource_id', $resources->pluck('id'))->whereIn('status', ['pending', 'confirmed', 'blocked'])
             ->where('starts_at', '<', $end)->where('ends_at', '>', $start)->get(['resource_id', 'starts_at', 'ends_at']);
 
         return Inertia::render('gomove/facility', compact('facility', 'resources', 'occupied', 'date'));
@@ -91,7 +91,18 @@ class GoMoveController extends Controller
         $this->browse($request);
         $resource = $this->resource($id);
         abort_unless($resource->publication_status === 'published', 404);
-        $service->reserve($resource, $this->bookingData($request), $request->user()->id);
+        if ($request->has('slots')) {
+            $data = $request->validate([
+                'date' => ['required', 'date_format:Y-m-d'],
+                'slots' => ['required', 'array', 'min:1', 'max:96'],
+                'slots.*' => ['required', 'date_format:H:i', 'distinct'],
+                'slot_minutes' => ['required', 'integer', Rule::in([15, 30, 60])],
+                'message' => ['nullable', 'string', 'max:1000'], 'submission_key' => ['required', 'uuid'],
+            ]);
+            $service->reserveSlots($resource, $data, $request->user()->id);
+        } else {
+            $service->reserve($resource, $this->bookingData($request), $request->user()->id);
+        }
 
         return redirect('/dashboard')->with('success', 'Rezervace byla zaznamenána. Stav najdete v přehledu.');
     }
@@ -112,7 +123,7 @@ class GoMoveController extends Controller
             ->where('o.customer_id', $this->customer()->id)->where('m.user_id', $request->user()->id)->select('o.*')->get();
         abort_if($organizations->isEmpty(), 403);
         $facilities = $this->facilities()->whereIn('f.organization_id', $organizations->pluck('id'))->get();
-        $resources = DB::table('gm_resources')->whereIn('facility_id', $facilities->pluck('id'))->get();
+        $resources = DB::table('gm_resources')->whereIn('facility_id', $facilities->pluck('id'))->orderBy('id')->get();
         $bookings = DB::table('gm_bookings as b')->leftJoin('users as u', 'u.id', '=', 'b.user_id')->join('gm_resources as r', 'r.id', '=', 'b.resource_id')
             ->whereIn('b.resource_id', $resources->pluck('id'))->select('b.*', 'r.name as resource_name', 'u.name as requester_name', 'u.email as requester_email')
             ->orderByDesc('b.starts_at')->limit(100)->get();
@@ -172,7 +183,7 @@ class GoMoveController extends Controller
             'name' => ['required', 'string', 'max:100', Rule::unique('gm_resources')->where('facility_id', $r->facility_id)->ignore($id)],
             'pricing_model' => ['required', Rule::in(['hourly', 'per_slot', 'agreement'])],
             'rate_czk' => ['nullable', 'required_unless:pricing_model,agreement', 'numeric', 'min:0', 'max:100000', 'decimal:0,2'],
-            'slot_minutes' => ['required', 'integer', 'min:15', 'max:1440', 'multiple_of:15'],
+            'slot_minutes' => ['required', 'integer', Rule::in([15, 30, 60])],
             'opens' => ['required', 'date_format:H:i', 'after_or_equal:06:00'],
             'closes' => ['required', 'date_format:H:i', 'after:opens', 'before_or_equal:23:00'],
         ]);
@@ -185,7 +196,7 @@ class GoMoveController extends Controller
         }
         DB::transaction(function () use ($data, $id, $request, $service) {
             DB::table('gm_resources')->where('id', $id)->lockForUpdate()->first();
-            foreach (DB::table('gm_bookings')->where('resource_id', $id)->whereIn('status', ['pending', 'confirmed', 'blocked'])->where('ends_at', '>', now()->utc())->get() as $b) {
+            foreach (DB::table('gm_booking_parts')->where('resource_id', $id)->whereIn('status', ['pending', 'confirmed', 'blocked'])->where('ends_at', '>', now()->utc())->get() as $b) {
                 if (CarbonImmutable::parse($b->starts_at)->setTimezone('Europe/Prague')->format('H:i') < $data['opens'] || CarbonImmutable::parse($b->ends_at)->setTimezone('Europe/Prague')->format('H:i') > $data['closes']) {
                     throw ValidationException::withMessages(['opens' => 'Nová otevírací doba koliduje s existující rezervací.']);
                 }
@@ -217,9 +228,40 @@ class GoMoveController extends Controller
         $f = $this->facilities()->where('f.id', $id)->firstOrFail();
         $this->manager($request, $f->organization_id);
         $data = $request->validate(['name' => ['required', 'string', 'max:100', Rule::unique('gm_resources')->where('facility_id', $id)]]);
-        DB::table('gm_resources')->insert([...$data, 'facility_id' => $id, 'pricing_model' => 'agreement', 'slot_minutes' => 60, 'opens' => '08:00', 'closes' => '22:00', 'created_at' => now(), 'updated_at' => now()]);
+        DB::transaction(function () use ($id, $data) {
+            DB::table('gm_facilities')->where('id', $id)->lockForUpdate()->first();
+            $whole = DB::table('gm_resources')->where('facility_id', $id)->where('is_whole', true)->value('id');
+            if ($whole && DB::table('gm_bookings')->where('resource_id', $whole)->whereIn('status', ['pending', 'confirmed', 'blocked'])->where('ends_at', '>', now())->exists()) {
+                throw ValidationException::withMessages(['name' => 'Části hřiště nelze přidat, dokud existují budoucí rezervace celého hřiště.']);
+            }
+            DB::table('gm_resources')->insert([...$data, 'facility_id' => $id, 'pricing_model' => 'agreement', 'slot_minutes' => 60, 'opens' => '08:00', 'closes' => '22:00', 'created_at' => now(), 'updated_at' => now()]);
+        });
 
         return back()->with('success', 'Samostatný prostor byl přidán.');
+    }
+
+    public function wholeField(Request $request, int $id, ReservationService $service)
+    {
+        $f = $this->facilities()->where('f.id', $id)->firstOrFail();
+        $this->manager($request, $f->organization_id);
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        DB::transaction(function () use ($id, $data, $request, $service) {
+            DB::table('gm_facilities')->where('id', $id)->lockForUpdate()->first();
+            if ($data['enabled'] && ! DB::table('gm_resources')->where('facility_id', $id)->where('is_whole', true)->exists()) {
+                $parts = DB::table('gm_resources')->where('facility_id', $id)->where('is_whole', false)->get();
+                $opens = $parts->max('opens');
+                $closes = $parts->min('closes');
+                if ($parts->isEmpty() || $opens >= $closes) {
+                    throw ValidationException::withMessages(['enabled' => 'Části hřiště musí mít společnou otevírací dobu.']);
+                }
+                // Default to agreement pricing until the manager configures the whole-field rate.
+                DB::table('gm_resources')->insert(['facility_id' => $id, 'name' => 'Celé hřiště', 'is_whole' => true, 'pricing_model' => 'agreement', 'slot_minutes' => 15, 'opens' => $opens, 'closes' => $closes, 'created_at' => now(), 'updated_at' => now()]);
+            }
+            DB::table('gm_facilities')->where('id', $id)->update(['whole_field_enabled' => $data['enabled'], 'updated_at' => now()]);
+            $service->audit($request->user()->id, 'facility.whole_field_updated', $id);
+        });
+
+        return back()->with('success', 'Možnost rezervovat celé hřiště byla aktualizována.');
     }
 
     public function editFacility(Request $request, int $id)

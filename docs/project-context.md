@@ -1,5 +1,9 @@
 # Project description and context
 
+## Current saved state — 2026-10-09
+
+GoMove containers are stopped at the user’s request; the application, PostgreSQL data, and generated assets are preserved. The presentation MVP includes 15/30/60-minute field slots, multiple slot selection, and an optional manager-controlled whole-field reservation. See [saved state, remaining plan, and restart instructions](session-state.md) before resuming. Latest verification: 51 tests / 329 assertions, concurrent part/whole conflict checks, and desktop/mobile browser flows passed. The local `mvp-0.1` checkpoint predates the latest worktree changes.
+
 ## User-requested purpose
 
 Create an independent web product for sports organizations to list sports facilities and fields available for rent. Members of the public should be able to choose a facility and request a booking. Šlapanice is the first customer deployment, not a permanent geographic restriction on GoMove.
@@ -31,7 +35,7 @@ Administrator access to personal information should be limited to agreed support
 
 An organization can operate several facilities. A facility can contain several independently rentable resources. For example, a sports complex could contain two tennis courts and one hall.
 
-Shared capacity is required from the first release. The owner defines the number of bookable parts of a facility and gives each a unique name within that facility, such as "1/2 half 1 (A)" and "1/2 half 2 (B)", or named quarters. Model parts explicitly with stable identifiers. Independent parts can be booked simultaneously; pending and confirmed reservations block only the reserved part. Multi-part or whole-facility bookings and overlapping half/quarter configurations require a follow-up decision.
+Shared capacity is required from the first release. The owner defines the number of bookable parts of a facility and gives each a unique name within that facility, such as "1/2 half 1 (A)" and "1/2 half 2 (B)", or named quarters. Model parts explicitly with stable identifiers. Independent parts can be booked simultaneously; pending and confirmed reservations block only the reserved part. Optional manager-enabled whole-field bookings now cover every individual part of a facility and require every part to be free. Arbitrary overlapping half/quarter configurations remain deferred.
 
 ## Proposed core workflow
 
@@ -39,7 +43,7 @@ Shared capacity is required from the first release. The owner defines the number
 
    After first approval, the organization can publish listing edits immediately without further approval.
 2. The manager enters regular availability, exceptions, prices, and rental conditions.
-3. A visitor chooses a resource and requested start and end time.
+3. A visitor chooses a resource or enabled whole field and one or more slots generated from its 15, 30, or 60-minute setting.
 4. The requester registers and signs in before submitting the request; whether email verification is mandatory remains undecided. Submission atomically checks availability and reserves the slot as pending when manual approval applies.
 5. With manual approval, the manager approves or declines the request. With automatic approval enabled, a valid request is confirmed during submission.
 6. Both approval paths check availability and booking rules and record confirmed bookings atomically to prevent conflicts.

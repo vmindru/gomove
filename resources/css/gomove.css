@@ -1489,3 +1489,37 @@
 .gm-logo small {
     white-space: nowrap;
 }
+
+.gm-slot-property {
+    padding: 11px 12px;
+    border: 1px solid #d3dccf;
+    border-radius: 6px;
+    background: #edf2e4;
+    font-size: 13px;
+    font-weight: 600;
+}
+.gm-slot-instruction {
+    font-size: 11px;
+    color: var(--gm-muted);
+    margin: 0 0 14px;
+}
+.gm-slot-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+.gm-slot-grid button {
+    padding: 11px 4px;
+    font-size: 11px;
+}
+.gm-selected-range {
+    display: block;
+    font-size: 12px;
+    margin-top: 5px;
+}
+@media (max-width: 700px) {
+    .gm-slot-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .gm-slot-grid button {
+        font-size: 10px;
+    }
+}

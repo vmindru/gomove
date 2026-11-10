@@ -21,7 +21,13 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
     const { auth } = usePage<{ auth: { user: unknown }; [key: string]: unknown }>().props;
     const [selected, setSelected] = useState(resources[0]?.id);
     const resource = resources.find((r) => r.id === selected) ?? resources[0];
-    const form = useForm({ date, time: '', minutes: resource?.slot_minutes ?? 60, message: '', submission_key: crypto.randomUUID() });
+    const form = useForm<{ date: string; slots: string[]; slot_minutes: number; message: string; submission_key: string }>({
+        date,
+        slots: [],
+        slot_minutes: resource?.slot_minutes ?? 60,
+        message: '',
+        submission_key: crypto.randomUUID(),
+    });
     if (!resource)
         return (
             <Layout>
@@ -30,26 +36,48 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
         );
     const startMinute = Number(resource.opens.slice(0, 2)) * 60 + Number(resource.opens.slice(3));
     const endMinute = Number(resource.closes.slice(0, 2)) * 60 + Number(resource.closes.slice(3));
-    const slots = Array.from({ length: Math.max(0, Math.floor((endMinute - startMinute) / 15)) }, (_, i) => startMinute + i * 15).filter(
-        (m) => m + form.data.minutes <= endMinute,
-    );
-    const busy = occupied.filter((o) => o.resource_id === resource.id);
-    const localMinutes = (instant: string) => {
-        const t = time(instant);
-        return Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
-    };
-    const unavailable = (minute: number) =>
-        busy.some((o) => minute < localMinutes(o.ends_at) && minute + form.data.minutes > localMinutes(o.starts_at));
     const formatMinute = (m: number) =>
         `${Math.floor(m / 60)
             .toString()
             .padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`;
+    const toMinute = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+    const slots = Array.from(
+        { length: Math.max(0, Math.floor((endMinute - startMinute) / resource.slot_minutes)) },
+        (_, i) => startMinute + i * resource.slot_minutes,
+    );
+    const parts = resources.filter((r) => !r.is_whole);
+    const busy = occupied
+        .filter((o) => (resource.is_whole ? parts.some((part) => part.id === o.resource_id) : o.resource_id === resource.id))
+        .filter((o, i, all) => all.findIndex((other) => other.starts_at === o.starts_at && other.ends_at === o.ends_at) === i);
+    const unavailable = (minute: number) =>
+        busy.some((o) => minute < toMinute(time(o.ends_at)) && minute + resource.slot_minutes > toMinute(time(o.starts_at))) ||
+        (resource.is_whole && parts.some((part) => minute < toMinute(part.opens) || minute + resource.slot_minutes > toMinute(part.closes)));
+    const isPast = (minute: number) =>
+        date < new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague' }).format(new Date()) ||
+        (date === new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague' }).format(new Date()) &&
+            minute <= toMinute(time(new Date().toISOString())));
+    const selectedMinutes = [...form.data.slots].sort().map(toMinute);
+    const groups: { start: number; end: number }[] = [];
+    for (const minute of selectedMinutes) {
+        const last = groups[groups.length - 1];
+        if (last && last.end === minute) last.end += resource.slot_minutes;
+        else groups.push({ start: minute, end: minute + resource.slot_minutes });
+    }
+    const totalMinutes = form.data.slots.length * resource.slot_minutes;
     const price =
         resource.pricing_model === 'agreement'
             ? null
             : resource.pricing_model === 'per_slot'
-              ? resource.rate_minor
-              : Math.ceil(((resource.rate_minor ?? 0) * form.data.minutes) / 60);
+              ? (resource.rate_minor ?? 0) * form.data.slots.length
+              : groups.reduce((total, group) => total + Math.ceil(((resource.rate_minor ?? 0) * (group.end - group.start)) / 60), 0);
+    function toggleSlot(minute: number) {
+        const value = formatMinute(minute);
+        form.setData((data) => ({
+            ...data,
+            slots: data.slots.includes(value) ? data.slots.filter((slot) => slot !== value) : [...data.slots, value].sort(),
+            submission_key: crypto.randomUUID(),
+        }));
+    }
     function submit(e: FormEvent) {
         e.preventDefault();
         form.post(`/resources/${resource.id}/book`);
@@ -93,8 +121,8 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                             <h2>Dostupnost a termíny</h2>
                             <span className="gm-small">Časy v Europe/Prague</span>
                         </div>
-                        <label className="gm-label">
-                            Vyberte prostor
+                        <div className="gm-label" role="group" aria-label="Vyberte prostor">
+                            <span>Vyberte prostor</span>
                             <div className="gm-resource-tabs">
                                 {resources.map((r) => (
                                     <button
@@ -106,17 +134,22 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                                             setSelected(r.id);
                                             form.setData((data) => ({
                                                 ...data,
-                                                time: '',
-                                                minutes: r.slot_minutes,
+                                                slots: [],
+                                                slot_minutes: r.slot_minutes,
                                                 submission_key: crypto.randomUUID(),
                                             }));
                                         }}
                                     >
-                                        {r.name}
+                                        {r.is_whole ? 'Celé hřiště' : r.name}
                                     </button>
                                 ))}
                             </div>
-                        </label>
+                        </div>
+                        {resource.is_whole && (
+                            <p className="gm-slot-instruction">
+                                Rezervace celého hřiště zahrnuje všechny části. Dostupné jsou pouze sloty, kdy jsou všechny části volné.
+                            </p>
+                        )}
                         <div className="gm-two-fields">
                             <label className="gm-label">
                                 Datum
@@ -129,24 +162,15 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                                     }}
                                 />
                             </label>
-                            <label className="gm-label">
-                                Délka rezervace
-                                <select
-                                    value={form.data.minutes}
-                                    disabled={resource.pricing_model === 'per_slot'}
-                                    onChange={(e) => form.setData((data) => ({ ...data, minutes: Number(e.target.value), time: '' }))}
-                                >
-                                    {Array.from({ length: Math.floor((endMinute - startMinute) / 15) }, (_, i) => (i + 1) * 15).map((m) => (
-                                        <option key={m} value={m}>
-                                            {m} minut
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
+                            <div className="gm-label">
+                                Délka slotu sportoviště
+                                <div className="gm-slot-property">{resource.slot_minutes} minut / slot</div>
+                                <span>Délku určuje organizace. Vyberte jeden nebo více volných slotů.</span>
+                            </div>
                         </div>
                         <div className="gm-calendar-legend">
                             <span>
-                                <i /> Volný začátek
+                                <i /> Volný slot
                             </span>
                             <span>
                                 <i className="busy" /> Obsazeno
@@ -158,16 +182,21 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                         {busy.length > 0 && (
                             <p className="gm-unavailable">Obsazené časy: {busy.map((o) => `${time(o.starts_at)}–${time(o.ends_at)}`).join(', ')}</p>
                         )}
-                        <div className="gm-time-grid">
+                        <p className="gm-slot-instruction">
+                            Kliknutím vyberte sloty; dalším kliknutím výběr zrušíte. Sousední sloty spojíme do jednoho termínu.
+                        </p>
+                        <div className="gm-time-grid gm-slot-grid">
                             {slots.map((m) => (
                                 <button
                                     key={m}
-                                    disabled={unavailable(m)}
-                                    aria-pressed={form.data.time === formatMinute(m)}
-                                    className={form.data.time === formatMinute(m) ? 'selected' : ''}
-                                    onClick={() => form.setData('time', formatMinute(m))}
+                                    disabled={unavailable(m) || isPast(m)}
+                                    aria-pressed={form.data.slots.includes(formatMinute(m))}
+                                    className={form.data.slots.includes(formatMinute(m)) ? 'selected' : ''}
+                                    onClick={() => toggleSlot(m)}
                                 >
-                                    {formatMinute(m)}
+                                    <span>
+                                        {formatMinute(m)}–{formatMinute(m + resource.slot_minutes)}
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -181,7 +210,9 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                 <aside className="gm-reservation-panel">
                     <p className="gm-eyebrow">VAŠE DALŠÍ HRA</p>
                     <h2>Rezervujte si čas</h2>
-                    <p>{resource.name}</p>
+                    <p>
+                        {resource.name} · {resource.slot_minutes} minut / slot
+                    </p>
                     <div className="gm-price">
                         <strong>{rate(resource)}</strong>
                     </div>
@@ -199,7 +230,16 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                             <span>
                                 {new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'medium' }).format(new Date(date + 'T12:00:00'))}
                                 <br />
-                                <strong>{form.data.time ? `${form.data.time} · ${form.data.minutes} minut` : 'Vyberte volný čas v kalendáři'}</strong>
+                                <strong>
+                                    {form.data.slots.length
+                                        ? `${form.data.slots.length} ${form.data.slots.length === 1 ? 'slot' : form.data.slots.length < 5 ? 'sloty' : 'slotů'} · ${totalMinutes} minut`
+                                        : 'Vyberte volné sloty v kalendáři'}
+                                </strong>
+                                {groups.map((group) => (
+                                    <span className="gm-selected-range" key={group.start}>
+                                        {formatMinute(group.start)}–{formatMinute(group.end)}
+                                    </span>
+                                ))}
                             </span>
                         </div>
                         <label className="gm-label">
@@ -217,7 +257,7 @@ function FacilityContent({ facility, resources, occupied, date }: FacilityProps)
                             <strong>{price === null ? 'Dohodou' : money(price)}</strong>
                         </div>
                         {auth.user ? (
-                            <button className="gm-btn gm-btn-dark gm-full" disabled={!form.data.time || form.processing} type="submit">
+                            <button className="gm-btn gm-btn-dark gm-full" disabled={!form.data.slots.length || form.processing} type="submit">
                                 {form.processing ? 'Odesíláme…' : facility.auto_approve ? 'Rezervovat termín' : 'Odeslat žádost'}
                                 <ArrowUpRight size={18} />
                             </button>

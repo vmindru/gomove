@@ -39,7 +39,7 @@ class GoMoveDemoSeeder extends Seeder
             DB::table('gm_memberships')->updateOrInsert(['organization_id' => $org, 'user_id' => $users['manager']]);
             foreach ([
                 ['Tenisové kurty Na Výsluní', 'Tenis', 'court', 'Sportovní 12, Ukázkové město', 'Dva samostatné kurty, čerstvý vzduch a čas jen pro vaši hru. Přijďte si zahrát s přáteli nebo potrénovat podání.', 'Šatny · Sprchy · Parkování · Venkovní', 'hourly', 28000, 60, ['Kurt 1', 'Kurt 2']],
-                ['Hřiště U Parku', 'Fotbal', 'field', 'Parková 8, Ukázkové město', 'Prostor pro týmovou hru i pohodový zápas. Každou polovinu hřiště lze rezervovat samostatně.', 'Umělý povrch · Osvětlení · Šatny', 'per_slot', 45000, 90, ['Polovina A', 'Polovina B']],
+                ['Hřiště U Parku', 'Fotbal', 'field', 'Parková 8, Ukázkové město', 'Prostor pro týmovou hru i pohodový zápas. Každou polovinu hřiště lze rezervovat samostatně.', 'Umělý povrch · Osvětlení · Šatny', 'per_slot', 15000, 30, ['Polovina A', 'Polovina B']],
                 ['Sportovní hala Horizont', 'Víceúčelové', 'hall', 'Javorová 3, Ukázkové město', 'Pod jednou střechou se vejde badminton, volejbal i vaše další sportovní setkání. Konkrétní podmínky domluvíte přímo s klubem.', 'Krytá hala · Bezbariérový vstup · Sprchy', 'agreement', null, 60, ['Hlavní sál']],
             ] as [$name, $sport, $style, $address, $description, $amenities, $model, $rate, $slot, $parts]) {
                 if (DB::table('gm_facilities')->where('organization_id', $org)->where('name', $name)->exists()) {

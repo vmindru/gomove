@@ -1,6 +1,6 @@
 # GoMove implementation plan
 
-Planning baseline: 2026-10-09. Implementation update: a presentation MVP subset is now running; see [implemented behavior and remaining work](mvp-demo.md). Phase checkboxes remain open until all corresponding exit checks are met. This roadmap describes work to do; it does not mark application features as implemented or authorize production deployment. Follow the phases in order and record completed tasks and evidence in their detail files.
+Planning baseline: 2026-10-09. Implementation update: a presentation MVP subset is implemented (containers stopped at the user’s request; see [saved state and remaining work](session-state.md)); see [implemented behavior and remaining work](mvp-demo.md). Phase checkboxes remain open until all corresponding exit checks are met. This roadmap describes work to do; it does not mark application features as implemented or authorize production deployment. Follow the phases in order and record completed tasks and evidence in their detail files.
 
 ## Product and current baseline
 
@@ -23,7 +23,7 @@ Keep these accepted rules throughout implementation:
 - Manual approval is the organization default, with a toggle for automatic approval. Managers own calendar accuracy.
 - Payment is arranged directly with the organization. The shared platform explicitly scopes data to customers and organizations.
 
-Defer online payments, recurring public bookings, external calendar synchronization, reviews, native mobile apps, and municipality migration tooling. Multi-part, whole-facility, and overlapping half/quarter combinations remain undecided; implement independent parts only until those semantics are agreed.
+Defer online payments, recurring public bookings, external calendar synchronization, reviews, native mobile apps, and municipality migration tooling. Multiple slot selection and optional manager-enabled whole-field reservations covering every part are now accepted and implemented. Arbitrary overlapping half/quarter combinations remain deferred; do not infer spatial containment from names.
 
 ## Ordered delivery phases
 

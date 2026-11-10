@@ -27,6 +27,14 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 | Public calendars | Show booked/unavailable slots without requester identity, contact details, or private notes | Accepted 2026-10-05 |
 | Localization | CZK prices, Czech date formatting, and Europe/Prague time with daylight-saving handling | Accepted 2026-10-05 |
 
+### 2026-10-09 — Optional whole-field reservations
+
+- Each facility manager can enable or disable “Celé hřiště”; the default is disabled.
+- Whole-field availability requires all of that facility’s individual parts to be free and open for the entire interval. Pending requests, confirmed bookings, and manager blocks all count as occupied.
+- One whole-field reservation blocks every part. Part reservations prevent overlapping whole-field requests. Cancellation or decline releases all affected parts; disabling the option preserves existing occupancy.
+- Managers configure a separate whole-field price and 15/30/60-minute slot length. Until configured, pricing is “Cena dohodou”. Multiple slot selection works as for individual parts.
+- Adding parts is rejected while active future whole-field reservations exist, to keep the set of covered parts consistent.
+
 ## Decisions needed before implementation
 
 | Question | Why it matters |
@@ -59,7 +67,13 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 
 ## Decision record
 
-### 2026-10-09 — Organization-defined slot durations
+### 2026-10-09 — Field slot configuration and multiple selection
+
+- Decision: Each rentable field/resource has a slot duration chosen by its organization: **15, 30, or 60 minutes**. This replaces the earlier unrestricted 15-minute increment proposal.
+- Calendar intervals are generated from opening time using the configured duration. Visitors may select multiple intervals; adjacent selections merge, separated selections create separate reservations in one atomic submission.
+- Hourly pricing prorates selected time, per-slot pricing multiplies the rate by selected slot count, and custom pricing remains “Cena dohodou”. Existing booking time and price snapshots are preserved.
+
+### 2026-10-09 — Earlier organization-defined slot proposal (superseded)
 
 - Decision owner: project owner (user).
 - Decision: Organizations define slot durations in positive 15-minute increments: 15, 30, 45, 60, 75, 90 minutes, and so on.
@@ -72,7 +86,7 @@ The sports rental purpose, Šlapanice as the first customer deployment, and docu
 - Decision: Rental rates are defined by the organization and expressed in CZK. Organizations choose hourly or per-slot pricing. Custom models use a “price by agreement” placeholder.
 - Rationale: The project owner confirmed organization control of pricing during the implementation-plan review.
 - Implementation consequences: Authorized organization managers maintain rental rates and choose the pricing model for their own rentable resources. Display numeric hourly or per-slot rates in CZK; show “Cena dohodou” for custom arrangements without calculating a numeric total. Preserve the applicable model and pricing information with booking requests. Do not impose a platform-wide rate.
-- Open questions: Hourly rounding, rate variations, and quote validity. Slot duration is organization-defined in 15-minute increments, as recorded below. Custom pricing formulas are outside the current implementation; use the agreement placeholder.
+- Open questions: Hourly rounding, rate variations, and quote validity. Slot duration is organization-defined as 15, 30, or 60 minutes, as recorded above. Custom pricing formulas are outside the current implementation; use the agreement placeholder.
 
 ### 2026-10-06 — Local Podman webserver and database
 

@@ -2,7 +2,7 @@
 
 GoMove is the working name for an independent web application where sports organizations can list facilities and rentable spaces, and residents can find available times and request bookings. Šlapanice is the first customer deployment, not the product owner or its geographic limit.
 
-**Status: local presentation MVP.** The Czech catalogue, resource availability, booking requests, manager approval, organization pricing, and publication review are implemented on Laravel/React and local Apache/PHP/PostgreSQL containers. See the [presentation guide](docs/mvp-demo.md) for demo accounts, a walkthrough, and remaining work. GoMove is the accepted working name and may be changed later. Accepted decisions are recorded in the decision document; remaining proposals await review. GoMove is independent, with Šlapanice as its first customer deployment.
+**Status: local presentation MVP, containers stopped.** See [saved implementation state and remaining plan](docs/session-state.md) to resume. The Czech catalogue, resource availability, booking requests, manager approval, organization pricing, and publication review are implemented on Laravel/React and local Apache/PHP/PostgreSQL containers. See the [presentation guide](docs/mvp-demo.md) for demo accounts, a walkthrough, and remaining work. GoMove is the accepted working name and may be changed later. Accepted decisions are recorded in the decision document; remaining proposals await review. GoMove is independent, with Šlapanice as its first customer deployment.
 
 ## Proposed first release
 

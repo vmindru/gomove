@@ -20,10 +20,11 @@ Use separate browser profiles or a normal window plus an incognito window for re
 
 1. Open the homepage anonymously. Introduce the Czech facility catalogue, sport filters, fictional demo notice, and mobile layout.
 2. Open **Tenisové kurty Na Výsluní**. Show two independently bookable courts, daily availability, hourly CZK pricing, and unavailable time ranges without requester details.
-3. Sign in as requester. Select a future date, court, duration, and a free start time; submit a request. Explain that pending status reserves the slot immediately. Show it under **Moje rezervace**.
+3. Sign in as requester. Select a future date, court, and one or more free calendar intervals; submit a request. Explain that pending status reserves the slot immediately. Show it under **Moje rezervace**.
 4. In a separate profile, sign in as manager. Open **Správa klubu**, approve the pending request, and refresh the requester page to show confirmation.
-5. Open **Sportoviště a ceny** in the manager view. Expand a facility and show organization-controlled hourly, per-slot, and agreement pricing. Slot lengths use 15-minute increments; the football demo has a 90-minute slot. Existing requests keep their recorded price when rates change.
-6. Open **Kalendář a blokace**. Add a training, closure, or external reservation. The public calendar shows the interval as unavailable. Overlapping writes are rejected; independent parts and adjacent bookings remain valid.
+5. Open **Sportoviště a ceny** in the manager view. Expand a facility and show organization-controlled hourly, per-slot, and agreement pricing. Choose 15, 30, or 60 minutes per field slot; the football demo uses 30-minute slots at 150 CZK each. The calendar renders intervals from this setting. Existing requests keep their recorded price when rates change.
+6. In a facility’s manager settings, enable **Povolit rezervaci celého hřiště** and configure its price and slot length. The visitor page adds **Celé hřiště**. A reservation on either part disables overlapping whole-field slots; a whole-field reservation blocks all parts. This option is off by default and independently configured per facility.
+7. Open **Kalendář a blokace**. Add a training, closure, or external reservation. The public calendar shows the interval as unavailable. Overlapping writes are rejected; independent parts and adjacent bookings remain valid.
 7. Optionally enable automatic approval for new requests, submit a fresh request, and show immediate confirmation. Return the toggle to manual for the next presentation. Existing pending requests are not converted automatically.
 8. Optionally create a new facility as manager, then sign in as administrator to approve its first publication. Show the administrator's public-browsing toggle. Restore public browsing after demonstrating restricted access.
 
@@ -32,7 +33,8 @@ There are already two confirmed tennis requests on the day after the build date 
 ## Implemented
 
 - Czech public catalogue and sport filtering, facility details, responsive desktop/mobile screens, and original vector sports illustrations.
-- Named independent resources, organization-specific pricing, organization-defined slots in positive 15-minute increments, and daily opening hours.
+- Optional manager-controlled whole-field booking, available only when every part is free; whole bookings block all parts.
+- Named independent resources, organization-specific pricing, organization-defined 15, 30, or 60-minute slots, and daily opening hours.
 - Session-based registration/login and Czech password recovery screens. Reset messages use the existing local log mailer.
 - Authenticated requests, manual/automatic approval, requester history, manager decisions, cancellation of future reservations, and price snapshots.
 - Immediate pending occupancy; transactional resource locks and a PostgreSQL exclusion constraint across pending, confirmed, and manager blocks.
@@ -47,7 +49,7 @@ The PostgreSQL range constraint uses `[)` intervals, allowing back-to-back booki
 This presentation build is a useful subset of the [implementation roadmap](implementation-plan.md), not completion of every phase.
 
 - Daily opening hours apply uniformly, with configurable times between 06:00 and 23:00; weekly schedules, recurring training, and date-specific opening exceptions remain planned. One-off blocks work now. Overnight booking is not supported.
-- Start times and durations use 15-minute steps. A slot must fit inside the daily opening window. A per-slot request books exactly one configured slot; hourly/agreement requests can choose a duration within the day.
+- Calendar intervals start at opening time and follow the field’s configured 15, 30, or 60-minute length. Only complete intervals inside opening hours can be selected. All pricing models support multiple slots. Adjacent selections become one reservation; separated selections become separate reservations submitted atomically. Per-slot rates multiply by slot count; hourly rates prorate each contiguous interval and round upward to the nearest minor unit.
 - The demo uses a 90-day horizon, no additional notice requirement, no pending expiry, nonmandatory email verification, and cancellation of future pending/confirmed bookings. Manager cancellation reasons and final cancellation policies remain open.
 - Hourly prices are prorated by duration and rounded upward to the nearest minor unit for demo totals. Final rounding/quote rules remain open. Agreement pricing never produces a numeric total.
 - Booking decision email delivery, queue/outbox workers, photo uploads, expanded onboarding/access management, full multilingual catalogs, database row-level policies, and production operations remain planned. The authoritative result is the booking status in the account.

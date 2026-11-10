@@ -46,6 +46,7 @@ function ResourceEditor({ resource }: { resource: Resource }) {
     return (
         <form
             className="gm-resource-editor"
+            data-resource-id={resource.id}
             onSubmit={(e: FormEvent) => {
                 e.preventDefault();
                 form.put(`/resources/${resource.id}`);
@@ -83,16 +84,19 @@ function ResourceEditor({ resource }: { resource: Resource }) {
                 </label>
             </div>
             <label className="gm-label">
-                Délka slotu (15minutové kroky)
-                <input
-                    type="number"
-                    min="15"
-                    max="1440"
-                    step="15"
-                    required
+                Délka slotu sportoviště
+                <select
+                    aria-label="Délka slotu sportoviště"
                     value={form.data.slot_minutes}
                     onChange={(e) => form.setData('slot_minutes', Number(e.target.value))}
-                />
+                >
+                    {[15, 30, 60].map((minutes) => (
+                        <option key={minutes} value={minutes}>
+                            {minutes} minut
+                        </option>
+                    ))}
+                </select>
+                <span>Kalendář nabídne tyto intervaly. Návštěvník může vybrat více slotů.</span>
             </label>
             <div className="gm-two-fields">
                 <label className="gm-label">
@@ -113,6 +117,8 @@ function ResourceEditor({ resource }: { resource: Resource }) {
 function FacilityEditor({ facility, resources }: { facility: Facility; resources: Resource[] }) {
     const form = useForm({ description: facility.description, amenities: facility.amenities ?? '', conditions: facility.conditions ?? '' });
     const part = useForm({ name: '' });
+    const whole = useForm({ enabled: facility.whole_field_enabled });
+    const [wholeBusy, setWholeBusy] = useState(false);
     return (
         <details className="gm-manage-facility">
             <summary>
@@ -123,6 +129,36 @@ function FacilityEditor({ facility, resources }: { facility: Facility; resources
                 <Badge status={facility.status} />
             </summary>
             <div className="gm-manage-facility-body">
+                <Errors errors={whole.errors} />
+                <label className="gm-toggle">
+                    <input
+                        type="checkbox"
+                        checked={whole.data.enabled}
+                        disabled={wholeBusy}
+                        onChange={(e) => {
+                            const enabled = e.target.checked;
+                            whole.setData('enabled', enabled);
+                            whole.clearErrors();
+                            setWholeBusy(true);
+                            router.put(
+                                `/facilities/${facility.id}/whole-field`,
+                                { enabled },
+                                {
+                                    onStart: () => whole.setData('enabled', enabled),
+                                    onFinish: () => setWholeBusy(false),
+                                    onError: (errors) => {
+                                        whole.setData('enabled', facility.whole_field_enabled);
+                                        whole.setError('enabled', errors.enabled ?? 'Nastavení se nepodařilo uložit.');
+                                    },
+                                },
+                            );
+                        }}
+                    />
+                    Povolit rezervaci celého hřiště
+                </label>
+                <p className="gm-small">
+                    Celé hřiště lze rezervovat, jen když jsou všechny části volné. Níže nastavte jeho cenu a délku slotu; výchozí cena je dohodou.
+                </p>
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -148,11 +184,12 @@ function FacilityEditor({ facility, resources }: { facility: Facility; resources
                 <h4>Samostatně rezervovatelné prostory</h4>
                 <div className="gm-resource-editors">
                     {resources
-                        .filter((r) => r.facility_id === facility.id)
+                        .filter((r) => r.facility_id === facility.id && (!r.is_whole || whole.data.enabled))
                         .map((r) => (
                             <ResourceEditor key={`${r.id}-${r.updated_at ?? ''}`} resource={r} />
                         ))}
                 </div>
+                <Errors errors={part.errors} />
                 <form
                     className="gm-inline-form"
                     onSubmit={(e) => {
@@ -358,7 +395,9 @@ export default function Manage({
             )}
             {tab === 'calendar' && (
                 <>
-                    <BlockForm resources={resources} />
+                    <BlockForm
+                        resources={resources.filter((r) => !r.is_whole || facilities.some((f) => f.id === r.facility_id && f.whole_field_enabled))}
+                    />
                     <h2 className="gm-subheading">Rezervace a blokované termíny</h2>
                     <BookingList bookings={bookings.filter((b) => ['pending', 'confirmed', 'blocked'].includes(b.status))} manager />
                 </>

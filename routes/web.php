@@ -13,6 +13,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/resources/{id}/block', [GoMoveController::class, 'block']);
     Route::put('/resources/{id}', [GoMoveController::class, 'saveResource']);
     Route::post('/facilities', [GoMoveController::class, 'createFacility']);
+    Route::put('/facilities/{id}/whole-field', [GoMoveController::class, 'wholeField']);
     Route::put('/facilities/{id}', [GoMoveController::class, 'editFacility']);
     Route::post('/facilities/{id}/resources', [GoMoveController::class, 'addResource']);
     Route::put('/organizations/{id}', [GoMoveController::class, 'organization']);

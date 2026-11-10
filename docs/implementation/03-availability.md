@@ -10,12 +10,12 @@ Prerequisite: [catalogue](02-catalogue.md). Review the relevant [open rules](00-
 4. [ ] Implement resource-scoped transactional mutations. Lock the resource row before checking opening rules and writing occupancy; use the same lock for booking submission, approval, blocks, and schedule changes. Use a consistent lock order for bulk schedule operations. The overlap constraint remains the final protection against conflicting active reservations.
 5. [ ] Add manager weekly-opening and date-exception forms plus one-off training, closure, and external-booking blocks. External bookings must use the same occupancy protection as online reservations. Keep public external-booking details anonymous.
 6. [ ] Reject schedule changes that conflict with active reservations under the proposed reviewed rule; show the manager affected records. Do not silently cancel or move bookings. A block cannot win against an already recorded overlapping reservation.
-7. [ ] Build a public named-resource calendar with an accessible list alternative, selected date/time, open/unavailable ranges, and refresh behavior. Bound date-range queries and response size. Return time ranges and availability only; pending versus confirmed private status need not be disclosed.
+7. [ ] Build a public named-resource calendar with an accessible list alternative, selected date and multiple slot intervals, open/unavailable ranges, and refresh behavior. Generate complete intervals from opening time using the resource’s 15, 30, or 60-minute setting. Bound date-range queries and response size. Return time ranges and availability only; pending versus confirmed private status need not be disclosed.
 8. [ ] Add PostgreSQL integration and concurrency tests before connecting the booking UI. Cover direct database conflicts as well as service-level validation. Avoid relying on SQLite or a single transaction to simulate simultaneous clients.
 
 ## Reservation invariants
 
-A booking uses one stable named Resource and one occupancy interval. Pending and confirmed states retain active occupancy; decline/cancellation releases it in the same transaction. Approval changes the existing reservation instead of creating a second occupancy. Independent parts permit simultaneous use. Names never imply spatial overlap or shared capacity.
+A booking uses one stable named Resource and one occupancy interval. A multi-slot submission groups adjacent selections into one booking and separated selections into distinct bookings; the entire submission commits atomically. Pending and confirmed states retain active occupancy; decline/cancellation releases it in the same transaction. Approval changes the existing reservation instead of creating a second occupancy. Independent parts permit simultaneous use. Names never imply spatial overlap or shared capacity. The explicit manager-enabled whole-field option covers all individual resources in its facility and checks every part’s opening hours. Store one occupancy row per covered resource with PostgreSQL overlap exclusion. Whole-field and partial bookings must share a facility lock before acquiring resource locks; status transitions update covered occupancy atomically.
 
 For a resource booked 10:00–11:00, 11:00–12:00 succeeds and 10:30–11:30 fails. Unavailable periods include closures, training, and external reservations through the same model. First recorded wins means first successful database reservation, not first browser click.
 
@@ -23,6 +23,7 @@ Constraint errors should become a Czech availability-conflict response with refr
 
 ## Exit checks
 
+- Concurrent whole-field and individual-part requests for an overlapping interval produce one success and one conflict.
 - Concurrent requests for one interval produce exactly one reservation; requests for two independent parts can both succeed.
 - Back-to-back reservations succeed, zero/negative durations fail, and pending/confirmed intervals both block.
 - Booking-versus-block and booking-versus-schedule-change races cannot leave an invalid reservation.

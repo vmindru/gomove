@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'in' => 'Vyberte jednu z nabízených možností.',
+    'distinct' => 'Stejný slot nelze vybrat vícekrát.',
     'required' => 'Pole :attribute je povinné.', 'email' => 'Zadejte platný e-mail.',
     'unique' => 'Tato hodnota už existuje.', 'confirmed' => 'Hesla se neshodují.',
     'min' => ['string' => 'Pole :attribute musí mít alespoň :min znaků.', 'numeric' => 'Minimum je :min.'],

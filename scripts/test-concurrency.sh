@@ -5,12 +5,15 @@ cd "$(dirname "$0")/.."
   -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=gomove_test_mvp -e DB_URL= \
   web sh -c '
     set -eu
-    php tests/concurrency.php setup
+    for variant in part whole; do
+    if [ "$variant" = whole ]; then race_variant=whole; else race_variant=; fi
+    php tests/concurrency.php setup "$race_variant"
     php tests/concurrency.php attempt > /tmp/gomove-mvp-race-a.log &
     first_pid=$!
-    php tests/concurrency.php attempt > /tmp/gomove-mvp-race-b.log &
+    php tests/concurrency.php attempt "$race_variant" > /tmp/gomove-mvp-race-b.log &
     second_pid=$!
     wait "$first_pid"
     wait "$second_pid"
     php tests/concurrency.php verify
+    done
   '

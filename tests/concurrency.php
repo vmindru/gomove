@@ -16,6 +16,7 @@ if (config('database.default') !== 'pgsql' || config('database.connections.pgsql
 }
 $db = DB::class;
 $mode = $argv[1] ?? '';
+$wholeRace = ($argv[2] ?? '') === 'whole';
 $fixture = '/tmp/gomove-mvp-race.json';
 if ($mode === 'setup') {
     $customer = $db::table('gm_customers')->insertGetId(['name' => 'Concurrency test', 'slug' => 'race-'.Str::uuid()]);
@@ -23,7 +24,12 @@ if ($mode === 'setup') {
     $org = $db::table('gm_organizations')->insertGetId(['customer_id' => $customer, 'name' => 'Concurrency test', 'email' => 'race@example.test']);
     $facility = $db::table('gm_facilities')->insertGetId(['organization_id' => $org, 'name' => 'Concurrency test', 'description' => 'Test', 'address' => 'Test', 'sport' => 'Tenis', 'status' => 'published']);
     $resource = $db::table('gm_resources')->insertGetId(['facility_id' => $facility, 'name' => 'Race court', 'pricing_model' => 'agreement', 'opens' => '08:00', 'closes' => '22:00']);
-    file_put_contents($fixture, json_encode(['resource' => $resource, 'user' => $user->id, 'barrier' => microtime(true) + 2]));
+    $whole = null;
+    if ($wholeRace) {
+        $db::table('gm_facilities')->where('id', $facility)->update(['whole_field_enabled' => true]);
+        $whole = $db::table('gm_resources')->insertGetId(['facility_id' => $facility, 'name' => 'Whole race field', 'is_whole' => true, 'pricing_model' => 'agreement', 'opens' => '08:00', 'closes' => '22:00']);
+    }
+    file_put_contents($fixture, json_encode(['resource' => $resource, 'whole' => $whole, 'user' => $user->id, 'barrier' => microtime(true) + 2]));
     exit;
 }
 $data = json_decode(file_get_contents($fixture), true, flags: JSON_THROW_ON_ERROR);
@@ -31,7 +37,7 @@ if ($mode === 'attempt') {
     while (microtime(true) < $data['barrier']) {
         usleep(1000);
     }
-    $resource = $db::table('gm_resources')->where('id', $data['resource'])->first();
+    $resource = $db::table('gm_resources')->where('id', $wholeRace ? $data['whole'] : $data['resource'])->first();
     try {
         $app->make(ReservationService::class)->reserve($resource, ['date' => now('Europe/Prague')->addDay()->format('Y-m-d'), 'time' => '10:00', 'minutes' => 60, 'submission_key' => (string) Str::uuid()], $data['user']);
         echo "reserved\n";
@@ -41,13 +47,13 @@ if ($mode === 'attempt') {
     exit;
 }
 if ($mode === 'verify') {
-    $count = $db::table('gm_bookings')->where('resource_id', $data['resource'])->whereIn('status', ['pending', 'confirmed'])->count();
+    $count = $db::table('gm_bookings')->whereIn('resource_id', array_filter([$data['resource'], $data['whole']]))->whereIn('status', ['pending', 'confirmed'])->count();
     $results = [trim(file_get_contents('/tmp/gomove-mvp-race-a.log')), trim(file_get_contents('/tmp/gomove-mvp-race-b.log'))];
     sort($results);
     if ($count !== 1 || $results !== ['conflict', 'reserved']) {
         throw new RuntimeException('Concurrent booking invariant failed: '.json_encode($results));
     }
-    echo "Concurrent independent processes: exactly one reservation, one rejected overlap.\n";
+    echo 'Concurrent independent processes ('.($data['whole'] ? 'part versus whole' : 'same part')."): exactly one reservation, one rejected overlap.\n";
     exit;
 }
 throw new RuntimeException('Unknown rehearsal mode.');

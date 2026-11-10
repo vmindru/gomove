@@ -5,6 +5,7 @@ import { type ReactNode } from 'react';
 export interface Resource {
     id: number;
     facility_id: number;
+    is_whole: boolean;
     name: string;
     pricing_model: 'hourly' | 'per_slot' | 'agreement';
     rate_minor: number | null;
@@ -23,6 +24,7 @@ export interface Facility {
     amenities: string | null;
     conditions: string | null;
     organization_id: number;
+    whole_field_enabled: boolean;
     organization_name: string;
     auto_approve: boolean;
     status: string;

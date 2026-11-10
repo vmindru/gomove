@@ -8,18 +8,18 @@ Return to the [roadmap](../implementation-plan.md). Accepted product rules remai
 | --- | --- | --- |
 | Authentication and recovery | Reuse Laravel session authentication and existing password reset; reject new bookings by revoked accounts and preserve booking history | Phase 1 account design; phase 4 submissions |
 | Email verification | Keep current nonmandatory verification for local demonstrations; decide whether to require it before real requests | Phase 4 authorization; pilot onboarding |
-| Duration, increments, notice, horizon | Accepted: organizations define slots in 15-minute increments. The local MVP also aligns starts to 15 minutes and permits durations within daily opening hours, with zero additional notice and a 90-day horizon. Final notice/horizon rules remain open | Phase 3 slot generation and phase 4 validation |
+| Duration, increments, notice, horizon | Accepted: organizations choose 15, 30, or 60-minute field slots. The calendar starts at opening time and offers multiple complete slots within daily opening hours, with zero additional notice and a 90-day horizon. Final notice/horizon rules remain open | Phase 3 slot generation and phase 4 validation |
 | Pending expiry | Do not add automatic expiry until a duration and notification policy are agreed; expose pending age to managers | Phase 4 states; phase 5 operations |
 | Approval-mode changes | Apply the setting to new submissions only; keep existing pending requests pending | Phase 4 transitions |
 | Cancellation | Propose requester cancellation of own pending/confirmed future bookings; manager cancellation requires a reason; agree cutoffs and past-booking behavior | Phase 4 cancel action |
 | Schedule changes affecting reservations | Reject conflicting closures or opening-hour reductions and list affected bookings; require explicit decisions before cancelling anything | Phase 3 schedule mutations |
-| Pricing details | Accepted: organizations choose hourly or per-slot CZK rates, with “price by agreement” for custom models. Accepted: organizations define slot durations in 15-minute increments. Decide hourly rounding, variations, and quote validity before calculating totals | Phase 2 fields; phase 4 price snapshot |
+| Pricing details | Accepted: organizations choose hourly or per-slot CZK rates, with “price by agreement” for custom models. Accepted: organizations choose 15, 30, or 60-minute field slots. Decide hourly rounding, variations, and quote validity before calculating totals | Phase 2 fields; phase 4 price snapshot |
 | Requester details | Propose account name, email, time range, and optional message; no additional required personal fields | Phase 4 request form |
 | Group requests | Use the same requester account flow unless participants require a separate workflow | Phase 4 form |
 | Photos | Use Laravel local storage with a persistent host directory for the local MVP; production storage remains open | Phase 5 uploads |
 | Administrator private-data access | Organization onboarding and publication review do not imply access to requester notes; agree explicit support permissions and audit requirements | Phase 1 permission matrix |
 
-Single-part bookings are the implementation boundary. Do not infer containment from names such as Half A or Quarter A. Combination behavior needs a separate reviewed model before implementation.
+Independent-part bookings and optional manager-enabled whole-field bookings are implemented. Whole-field reservations cover every individual part of that facility. Do not infer containment from names such as Half A or Quarter A; arbitrary overlapping half/quarter combinations remain deferred.
 
 For daylight-saving inputs, propose rejecting nonexistent local times and requiring explicit selection of an offset when a local time is ambiguous. Review Czech error wording and interaction before phase 4. Store valid booking instants consistently in UTC.
 
